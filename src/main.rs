@@ -81,6 +81,7 @@ enum Op2 {
     Minus,
     Times,
     Equal,
+    DoubleEqual,
     Greater,
     GreaterEqual,
     Less,
@@ -95,6 +96,7 @@ enum Expr {
     Let(Vec<(String, Expr)>, Box<Expr>),
     Tuple(Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
+    SetIdx(Box<Expr>, Box<Expr>, Box<Expr>),
     UnOp(Op1, Box<Expr>),
     BinOp(Op2, Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
@@ -139,6 +141,7 @@ fn parse_expr(s: &Sexp) -> Expr {
                     Box::new(parse_expr(els)),
                 ),
                 [Sexp::Atom(S(keyword)), e1, e2] if keyword == "index" => Expr::Index(Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
+                [Sexp::Atom(S(keyword)), e1, e2, e3] if keyword == "setidx" => Expr::SetIdx(Box::new(parse_expr(e1)), Box::new(parse_expr(e2)), Box::new(parse_expr(e3))),
                 [Sexp::Atom(S(op)), e1, e2] if op == "+" => Expr::BinOp(Op2::Plus, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
                 [Sexp::Atom(S(op)), e1, e2] if op == "-" => Expr::BinOp(Op2::Minus, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
                 [Sexp::Atom(S(op)), e1, e2] if op == "*" => Expr::BinOp(Op2::Times, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
@@ -147,6 +150,7 @@ fn parse_expr(s: &Sexp) -> Expr {
                 [Sexp::Atom(S(op)), e1, e2] if op == ">" => Expr::BinOp(Op2::Greater, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
                 [Sexp::Atom(S(op)), e1, e2] if op == ">=" => Expr::BinOp(Op2::GreaterEqual, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
                 [Sexp::Atom(S(op)), e1, e2] if op == "<=" => Expr::BinOp(Op2::LessEqual, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
+                [Sexp::Atom(S(op)), e1, e2] if op == "==" => Expr::BinOp(Op2::DoubleEqual, Box::new(parse_expr(e1)), Box::new(parse_expr(e2))),
                 [Sexp::Atom(S(op)), bindings, body] if op == "let" => {
                     let mut vector: Vec<(String, Expr)> = Vec::new();
                     match bindings {
@@ -541,6 +545,7 @@ fn compile_to_instrs(e: &Expr, si: i32, vec: &mut Vec<Instr>, env: &HashMap<Stri
                     vec.push(Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(3)));
                     vec.push(Instr::ICMovge(Val::Reg(Reg::RAX), Val::Reg(Reg::RBX)));
                 }
+                Op2::DoubleEqual => todo!(),
             }
         }
         Expr::If(cond, thn, els) => {
@@ -684,6 +689,32 @@ fn compile_to_instrs(e: &Expr, si: i32, vec: &mut Vec<Instr>, env: &HashMap<Stri
             vec.push(Instr::IJumpEq(Val::Label("throw_error".to_string())));
             vec.push(Instr::IMov(Val::Reg(Reg::RAX), Val::RegOffsetIndex(Reg::RAX, Reg::RDX, 4, 1))) //multiply by 4 to account for doubling???
         }
+        Expr::SetIdx(tuple, index, element) => {
+            compile_to_instrs(index, si, vec, env, brake, l, funs, is_def);
+            vec.push(Instr::IMov(Val::Reg(Reg::RDX), Val::Reg(Reg::RAX))); //RDX = index
+            vec.push(Instr::ICmp(Val::Reg(Reg::RAX), Val::Imm(2))); // no indices less than 1 
+            vec.push(Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(7))); // true
+            vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::Imm(3))); // false
+            vec.push(Instr::ICMovl(Val::Reg(Reg::RCX), Val::Reg(Reg::RBX)));
+
+            compile_to_instrs(tuple, si + 1, vec, env, brake, l, funs, is_def); //RAX = addr
+            vec.push(Instr::IMov(Val::Reg(Reg::RBX), Val::Reg(Reg::RDX))); //RBX = index
+            vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::RegOffset(Reg::RAX, -1))); //RCX = size
+            vec.push(Instr::IMul(Val::Reg(Reg::RCX), Val::Imm(2))); //multiply by 2
+            vec.push(Instr::ICmp(Val::Reg(Reg::RBX), Val::Reg(Reg::RCX))); // no indices greater than size
+            vec.push(Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(7)));
+            vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::Imm(3)));
+            vec.push(Instr::ICMovg(Val::Reg(Reg::RCX), Val::Reg(Reg::RBX)));
+
+            vec.push(Instr::ICmp(Val::Reg(Reg::RCX), Val::Imm(7)));
+            vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::Imm(12))); //OOB
+            vec.push(Instr::IJumpEq(Val::Label("throw_error".to_string())));
+
+            vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::Reg(Reg::RAX))); // RCX = addr
+            compile_to_instrs(element, si + 2, vec, env, brake, l, funs, is_def); //RAX = element
+            vec.push(Instr::IMovq(Val::RegOffsetIndex(Reg::RCX, Reg::RDX, 4, 1), Val::Reg(Reg::RAX)));
+            vec.push(Instr::IMov(Val::Reg(Reg::RAX), Val::Reg(Reg::RCX)));
+        }
     }
 }
 
@@ -729,6 +760,7 @@ fn depth(e: &Expr) -> i32 {
             max_depth
         }
         Expr::Index(tuple, index) => (depth(tuple) + 1).max(depth(index)), //index eval order
+        Expr::SetIdx(tuple, index, element) => (depth(element) + 2).max((depth(tuple) + 1).max(depth(index))) // ???
         }
     }
 
