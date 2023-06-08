@@ -1,0 +1,49 @@
+(fun (search bst val) 
+    (if (isnil val)
+        false
+        (if (isnil (index bst 1))
+            false
+            (if (= (index bst 1) val)
+                true
+                (if (< val (index bst 1))
+                    (if (isnil (index bst 2))
+                        false
+                        (search (index bst 2) val)
+                    )
+                    (if (isnil (index bst 3))
+                        false
+                        (search (index bst 3) val)
+                    )
+                )
+            )
+        )
+    )
+)
+
+(fun (insert bst val) 
+    (if (isnil val)
+        false
+        (if (isnil (index bst 1))
+            (tuple val nil nil)
+            (if (< val (index bst 1))
+                (if (isnil (index bst 2))
+                    (tuple (index bst 1) (tuple val nil nil) (index bst 3))
+                    (tuple (index bst 1) (insert (index bst 2) val) (index bst 3))
+                )
+                (if (isnil (index bst 3))
+                    (tuple (index bst 1) (index bst 2) (tuple val nil nil))
+                    (tuple (index bst 1) (index bst 2) (insert (index bst 3) val))
+                )
+            )
+        )
+    )
+)
+
+(block
+    (print (tuple nil nil nil))
+    (print (tuple 4 (tuple 2 (tuple 1 nil nil) (tuple 3 nil nil)) (tuple 7 (tuple 5 nil nil) (tuple 8 nil nil))))
+    (print (insert (tuple nil nil nil) 4))
+    (print (insert (tuple 4 nil nil) 2))
+    (print (insert (tuple 4 (tuple 2 nil nil) nil) 6))
+    (insert (tuple 4 (tuple 2 (tuple 1 nil nil) (tuple 3 nil nil)) (tuple 7 (tuple 5 nil nil) (tuple 8 nil nil))) 6)
+)

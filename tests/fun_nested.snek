@@ -1,0 +1,5 @@
+(fun (plus x y) (+ x y))
+
+(fun (mystery z) (plus z z))
+
+(mystery 5)

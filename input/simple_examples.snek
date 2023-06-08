@@ -1,0 +1,13 @@
+(block
+    (print (tuple 1 2 3 4 5 6 7 8 9 10))
+    (print (tuple (tuple 1) (tuple 3 4)))
+    (print (tuple (tuple (tuple 1) 2) 3))
+    (print (tuple true true false false))
+    (print (tuple nil nil))
+
+    (print (index (tuple 1 2 3 4 5 6 7 8 9 10) 1))
+    (print (index (tuple 1 (tuple 3 4)) 2))
+    (print (index (index (tuple (tuple (tuple 1) 2) 3) 1) 1))
+    (print (index (tuple true true false false) 3))
+    (index (tuple nil nil) 2)
+)

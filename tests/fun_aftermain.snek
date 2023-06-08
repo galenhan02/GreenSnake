@@ -1,0 +1,7 @@
+(fun (double x) (+ x x))
+
+(double input)
+
+(fun (increment x) (add1 x))
+
+(increment 1)

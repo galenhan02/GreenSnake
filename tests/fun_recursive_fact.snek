@@ -1,0 +1,7 @@
+(fun (fact n)
+    (if (= 1 n)
+        1
+        (* (fact (- n 1)) n)
+    )
+)
+(fact input)

@@ -1,0 +1,9 @@
+(fun (point x y) (tuple x y))
+
+(fun (combine_points a b) (tuple (+ (index a 1) (index b 1)) (+ (index a 2) (index b 2))))
+
+(block
+    (print (point 1 1))
+    (print (combine_points (point 1 2) (point 3 4)))
+    (combine_points (combine_points (point 1 2) (point 3 4)) (combine_points (point 1 2) (point 3 4)))
+)

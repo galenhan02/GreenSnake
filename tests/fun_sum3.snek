@@ -1,0 +1,4 @@
+(fun (sum x y z) (+ (+ x y) z))
+
+
+(sum 4 5 6)
