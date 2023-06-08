@@ -62,6 +62,7 @@ enum Instr {
     ILabel(Val),
     ISar(Val, Val),
     IJumpOf(Val),
+    IAnd(Val, Val),
     IRet,
 }
 
@@ -545,7 +546,25 @@ fn compile_to_instrs(e: &Expr, si: i32, vec: &mut Vec<Instr>, env: &HashMap<Stri
                     vec.push(Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(3)));
                     vec.push(Instr::ICMovge(Val::Reg(Reg::RAX), Val::Reg(Reg::RBX)));
                 }
-                Op2::DoubleEqual => todo!(),
+                Op2::DoubleEqual => {
+                    let stack_offset = si * 8;
+                    compile_to_instrs(e1, si, vec, env, brake, l, funs, is_def);
+                    vec.push(Instr::IMov(Val::RegOffset(Reg::RSP, stack_offset), Val::Reg(Reg::RAX)));
+                    compile_to_instrs(e2, si + 1, vec, env, brake, l, funs, is_def);
+                    vec.push(Instr::IMov(Val::Reg(Reg::RBX), Val::Reg(Reg::RAX)));
+                    vec.push(Instr::IAnd(Val::Reg(Reg::RBX), Val::Imm(3)));
+                    vec.push(Instr::ICmp(Val::Reg(Reg::RBX), Val::Imm(1)));
+                    vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::Imm(7)));
+                    vec.push(Instr::IJumpNe(Val::Label("throw_error".to_string())));
+                    
+                    vec.push(Instr::IMov(Val::Reg(Reg::RBX), Val::Reg(Reg::RAX)));
+                    vec.push(Instr::IXor(Val::Reg(Reg::RBX), Val::RegOffset(Reg::RSP, stack_offset)));
+                    vec.push(Instr::ITest(Val::Reg(Reg::RBX), Val::Imm(3)));
+                    vec.push(Instr::IMov(Val::Reg(Reg::RCX), Val::Imm(7))); //7 here is error code
+                    vec.push(Instr::IJumpNe(Val::Label("throw_error".to_string())));
+
+                    // call rust function
+                }
             }
         }
         Expr::If(cond, thn, els) => {
@@ -871,7 +890,11 @@ fn instr_to_str(i: &Instr) -> String {
         Instr::IRet => {
             format!("\nret")
         }
-        
+        Instr::IAnd(dst, src) => {
+            let dst_str = val_to_str(dst);
+            let src_str = val_to_str(src);
+            format!("\nand {dst_str}, {src_str}")
+        }
     }
 }
 

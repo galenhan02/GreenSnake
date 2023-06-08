@@ -1,3 +1,0 @@
-(let ((x (tuple 1 2)) (y (tuple 1 2))) 
-    (setidx x 1 2) 
-)
