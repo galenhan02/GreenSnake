@@ -22,6 +22,28 @@ pub extern "C" fn snek_error(errcode: i64) {
     std::process::exit(1);
 }
 
+#[no_mangle]
+#[export_name = "\x01snek_eq"]
+pub extern "C" fn snek_eq(val_1 : i64, val_2 : i64) -> i64 {
+    let addr_1 = (val_1 - 1) as *const i64;
+    let length_1 = unsafe {*addr_1};
+
+    let addr_2 = (val_2 - 1) as *const i64;
+    let length_2 = unsafe {*addr_2};
+
+    if length_1 != length_2 {
+      return 3;
+    }
+
+    for i in 1..=length_1 as isize {
+      if unsafe {*addr_1.offset(i) != *addr_2.offset(i)} {
+        return 3;
+      }
+    }
+
+    return 7;
+}
+
 fn parse_arg(v : &Vec<String>) -> i64 {
   if v.len() < 2 { return 1 }
   let s = &v[1];
@@ -54,7 +76,7 @@ fn snek_str(val : i64) -> String {
     let addr = (val - 1) as *const i64;
     let length = unsafe {*addr };
     let mut result = "(tuple".to_string();
-    for i in 1..=length as isize{
+    for i in 1..=length as isize {
       let element = unsafe { *addr.offset(i) };
       result = result + &format!(" {}", snek_str(element));
     }

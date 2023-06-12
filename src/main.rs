@@ -37,6 +37,7 @@ enum Reg {
     RCX,
     RDX,
     R15,
+    RSI,
 }
 
 #[derive(Debug)]
@@ -548,6 +549,7 @@ fn compile_to_instrs(e: &Expr, si: i32, vec: &mut Vec<Instr>, env: &HashMap<Stri
                 }
                 Op2::DoubleEqual => {
                     let stack_offset = si * 8;
+                    
                     compile_to_instrs(e1, si, vec, env, brake, l, funs, is_def);
                     vec.push(Instr::IMov(Val::RegOffset(Reg::RSP, stack_offset), Val::Reg(Reg::RAX)));
                     compile_to_instrs(e2, si + 1, vec, env, brake, l, funs, is_def);
@@ -564,6 +566,15 @@ fn compile_to_instrs(e: &Expr, si: i32, vec: &mut Vec<Instr>, env: &HashMap<Stri
                     vec.push(Instr::IJumpNe(Val::Label("throw_error".to_string())));
 
                     // call rust function
+                    let offset = 8;
+                    vec.push(Instr::ISub(Val::Reg(Reg::RSP), Val::Imm(offset.into())));
+                    vec.push(Instr::IMov(Val::RegOffset(Reg::RSP, 0), Val::Reg(Reg::RDI)));
+                    vec.push(Instr::IMov(Val::Reg(Reg::RDI), Val::RegOffset(Reg::RSP, stack_offset + offset)));
+                    vec.push(Instr::IMov(Val::Reg(Reg::RSI), Val::Reg(Reg::RAX)));
+                    vec.push(Instr::ICall(Val::FunName("snek_eq".to_string())));
+
+                    vec.push(Instr::IAdd(Val::Reg(Reg::RSP), Val::Imm(offset.into())));
+                    
                 }
             }
         }
@@ -910,6 +921,7 @@ fn val_to_str(v: &Val) -> String {
                 Reg::RCX => format!("rcx"),
                 Reg::R15 => format!("r15"),
                 Reg::RDX => format!("rdx"),
+                Reg::RSI => format!("rsi"),
             }
         }
         Val::RegOffset(reg, offset) => {
@@ -921,7 +933,8 @@ fn val_to_str(v: &Val) -> String {
                     Reg::RBX => format!("[rbx {}]", *offset),
                     Reg::RCX => format!("[rcx {}]", *offset),
                     Reg::R15 => format!("[r15 {}]", *offset),
-                    Reg::RDX => format!("[r15 {}]", *offset),
+                    Reg::RDX => format!("[rdx {}]", *offset),
+                    Reg::RSI => format!("[rsi {}]", *offset),
                 }
             }
             else {
@@ -933,6 +946,7 @@ fn val_to_str(v: &Val) -> String {
                     Reg::RCX => format!("[rcx + {}]", *offset),
                     Reg::R15 => format!("[r15 + {}]", *offset),
                     Reg::RDX => format!("[rdx + {}]", *offset),
+                    Reg::RSI => format!("[rsi + {}]", *offset),
                 }
             }
             
@@ -950,6 +964,7 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[rax + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[rax + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[rax + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rax + {}*rsi - {}]", *scale, *offset),
                     }
                 }
                 Reg::RSP => {
@@ -961,6 +976,7 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[rsp + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[rsp + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[rsp + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rsp + {}*rsi - {}]", *scale, *offset),
                     }
                 }
                 Reg::RDI => {
@@ -972,6 +988,7 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[rdi + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[rdi + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[rdi + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rdi + {}*rsi - {}]", *scale, *offset),
                     }
                 }
                 Reg::RBX => {
@@ -983,6 +1000,7 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[rbx + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[rbx + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[rbx + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rbx + {}*rsi - {}]", *scale, *offset),
                     }
                 }
                 Reg::RCX => {
@@ -994,6 +1012,7 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[rcx + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[rcx + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[rcx + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rcx + {}*rsi - {}]", *scale, *offset),
                     }
                 },
                 Reg::R15 => {
@@ -1005,6 +1024,7 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[r15 + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[r15 + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[r15 + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[r15 + {}*rsi - {}]", *scale, *offset),
                     }
                 }
                 Reg::RDX => {
@@ -1016,6 +1036,19 @@ fn val_to_str(v: &Val) -> String {
                         Reg::RCX => format!("[rdx + {}*rcx - {}]", *scale, *offset),
                         Reg::R15 => format!("[rdx + {}*r15 - {}]", *scale, *offset),
                         Reg::RDX => format!("[rdx + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rdx + {}*rsi - {}]", *scale, *offset),
+                    }
+                }
+                Reg::RSI => {
+                    match reg_index {
+                        Reg::RAX => format!("[rsi + {}*rax - {}]", *scale, *offset),
+                        Reg::RSP => format!("[rsi + {}*rsp - {}]", *scale, *offset),
+                        Reg::RDI => format!("[rsi + {}*rdi - {}]", *scale, *offset),
+                        Reg::RBX => format!("[rsi + {}*rbx - {}]", *scale, *offset),
+                        Reg::RCX => format!("[rsi + {}*rcx - {}]", *scale, *offset),
+                        Reg::R15 => format!("[rsi + {}*r15 - {}]", *scale, *offset),
+                        Reg::RDX => format!("[rsi + {}*rdx - {}]", *scale, *offset),
+                        Reg::RSI => format!("[rsi + {}*rsi - {}]", *scale, *offset),
                     }
                 }
             }
@@ -1094,6 +1127,7 @@ section .text
 global our_code_starts_here
 extern snek_error
 extern snek_print
+extern snek_eq
 throw_error:
   push rsp
   mov rdi, rcx
