@@ -1,0 +1,1 @@
+(let ( (t1 (tuple 1 2 3)) (t2 (tuple 1 2 t1))) (block (setidx t1 3 t1) t2))

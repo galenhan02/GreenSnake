@@ -77,6 +77,7 @@ fn snek_str(val : i64, seen : &mut Vec<i64>) -> String {
     if seen.contains(&val) {
       return "(tuple <cyclic>)".to_string()
     }
+    seen.push(val);
     let addr = (val - 1) as *const i64;
     let length = unsafe {*addr };
     let mut result = "(tuple".to_string();
