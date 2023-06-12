@@ -63,24 +63,29 @@ fn parse_arg(v : &Vec<String>) -> i64 {
 #[no_mangle]
 #[export_name = "\x01snek_print"]
 fn snek_print(val : i64) -> i64 {
-  println!("{}", snek_str(val));
+  let mut seen = Vec::<i64>::new();
+  println!("{}", snek_str(val, &mut seen));
   return val;
 }
 
-fn snek_str(val : i64) -> String {
+fn snek_str(val : i64, seen : &mut Vec<i64>) -> String {
   if val == 7 { "true".to_string() }
   else if val == 3 { "false".to_string() }
   else if val % 2 == 0 { format!("{}", val >> 1) }
   else if val == 1 { "nil".to_string() }
   else if val & 1 == 1 {
+    if seen.contains(&val) {
+      return "(tuple <cyclic>)".to_string()
+    }
     let addr = (val - 1) as *const i64;
     let length = unsafe {*addr };
     let mut result = "(tuple".to_string();
     for i in 1..=length as isize {
       let element = unsafe { *addr.offset(i) };
-      result = result + &format!(" {}", snek_str(element));
+      result = result + &format!(" {}", snek_str(element, seen));
     }
     result = result.to_string() + ")";
+    seen.pop();
     return result.to_string();
   }
   else {
