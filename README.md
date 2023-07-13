@@ -1,1 +1,1 @@
-CSE 131 Green Snake
+Green Snake
