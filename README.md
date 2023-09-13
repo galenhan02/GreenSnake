@@ -1,4 +1,4 @@
-Green Snake
+Snek
 ```
 Concrete Syntax
 
